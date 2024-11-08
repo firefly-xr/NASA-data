@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agricultural and Environmental Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+            background-color: #0a0e17;
+            color: #e0e0e0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .dashboard {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: linear-gradient(45deg, #12192c, #1c2942);
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(0, 150, 255, 0.1);
+        }
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            text-align: center;
+            color: #4dc3ff;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 0 0 10px rgba(77, 195, 255, 0.5);
+        }
+        .grid {
+            display: grid;
+            grid-template-columns:d repeat(2, 1fr);
+            gap: 20px;
+        }
+        .box {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        .box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(77, 195, 255, 0.2);
+        }
+        .value-box {
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .value-box::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(
+                from 0deg,
+                transparent 0deg 340deg,
+                rgba(77, 195, 255, 0.2) 340deg 360deg
+            );
+            animation: rotate 4s linear infinite;
+        }
+        .value-box-content {
+            position: relative;
+            z-index: 1;
+        }
+        @keyframes rotate {
+            100% { transform: rotate(360deg); }
+        }
+        .value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #4dc3ff;
+            margin-top: 10px;
+        }
+        h3 {
+            font-family: 'Orbitron', sans-serif;
+            margin: 0 0 10px 0;
+            color: #7a9cc6;
+        }
+        canvas {
+            width: 100% !important;
+            height: 300px !important;
+        }
+        iframe {
+            width: 100%;
+            height: 260px;
+            border: 1px solid #cccccc;
+            border-radius: 10px;
+        }
+        select, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background-color: #2a3b5a;
+            color: #e0e0e0;
+            border: none;
+            border-radius: 5px;
+            font-family: 'Roboto', sans-serif;
+        }
+        button {
+            background-color: #4dc3ff;
+            color: #0a0e17;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #3aa3d9;
+        }
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <h1>Agricultural and Environmental Dashboard</h1>
+        <div class="grid">
+            <div class="box value-box">
+                <div class="value-box-content">
+                    <h3>Vegetation Index (NDVI)</h3>
+                    <div id="ndvi" class="value">Loading...</div>
+                </div>
+            </div>
+            <div class="box value-box">
+                <div class="value-box-content">
+                    <h3>Soil Moisture</h3>
+                    <div id="soil-moisture" class="value">Loading...</div>
+                </div>
+            </div>
+            <div class="box">
+                <h3>Local Temperature</h3>
+                <iframe src="https://thingspeak.com/channels/2683832/charts/2?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=60&title=Temperature&type=line"></iframe>
+            </div>
+            <div class="box">
+                <h3>Local Humidity</h3>
+                <iframe src="https://thingspeak.com/channels/2683832/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=60&title=Humidity&type=line"></iframe>
+            </div>
+            <div class="box">
+                <h3>Global Temperature Trend</h3>
+                <canvas id="temperature-chart"></canvas>
+            </div>
+            <div class="box">
+                <h3>Global Precipitation</h3>
+                <canvas id="precipitation-chart"></canvas>
+            </div>
+            <div class="box">
+                <h3>Weather Prediction</h3>
+                <div id="weather-prediction">Loading weather prediction...</div>
+            </div>
+            <div class="box">
+                <h3>Crop Cultivation System</h3>
+                <select id="crop-select">
+                    <option value="">Select a crop</option>
+                    <option value="wheat">Wheat</option>
+                    <option value="rice">Rice</option>
+                    <option value="corn">Corn</option>
+                    <option value="soybeans">Soybeans</option>
+                </select>
+                <button onclick="analyzeCrop()">Analyze Crop Suitability</button>
+                <div id="crop-analysis"></div>
+            </div>
+            <div class="box" style="grid-column: 1 / -1;">
+                <h3>Drought Monitor</h3>
+                <div id="drought-monitor">Loading drought monitor data...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simulated NDVI data (replace with real API call)
+        function updateNDVI() {
+            const ndvi = (Math.random() * (0.8 - 0.2) + 0.2).toFixed(2);
+            document.getElementById('ndvi').textContent = ndvi;
+        }
+
+        // Simulated soil moisture data (replace with real API call)
+        function updateSoilMoisture() {
+            const soilMoisture = (Math.random() * (40 - 10) + 10).toFixed(1);
+            document.getElementById('soil-moisture').textContent = soilMoisture + '%';
+        }
+
+        // Temperature chart
+        const tempCtx = document.getElementById('temperature-chart').getContext('2d');
+        const tempChart = new Chart(tempCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Temperature (°C)',
+                    data: [],
+                    borderColor: '#4dc3ff',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false
+                    }
+                }
+            }
+        });
+
+        // Precipitation chart
+        const precipCtx = document.getElementById('precipitation-chart').getContext('2d');
+        const precipChart = new Chart(precipCtx, {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Precipitation (mm)',
+                    data: [],
+                    backgroundColor: '#4dc3ff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Update temperature and precipitation charts
+        function updateCharts() {
+            const now = new Date();
+            const label = now.toLocaleTimeString();
+
+            // Update temperature chart
+            tempChart.data.labels.push(label);
+            tempChart.data.datasets[0].data.push((Math.random() * (30 - 15) + 15).toFixed(1));
+            if (tempChart.data.labels.length > 10) {
+                tempChart.data.labels.shift();
+                tempChart.data.datasets[0].data.shift();
+            }
+            tempChart.update();
+
+            // Update precipitation chart
+            precipChart.data.labels.push(label);
+            precipChart.data.datasets[0].data.push((Math.random() * 10).toFixed(1));
+            if (precipChart.data.labels.length > 10) {
+                precipChart.data.labels.shift();
+                precipChart.data.datasets[0].data.shift();
+            }
+            precipChart.update();
+        }
+
+        // Simulated drought monitor data (replace with real API call)
+        function updateDroughtMonitor() {
+            const droughtLevels = ['None', 'D0 - Abnormally Dry', 'D1 - Moderate Drought', 'D2 - Severe Drought', 'D3 - Extreme Drought', 'D4 - Exceptional Drought'];
+            const randomLevel = droughtLevels[Math.floor(Math.random() * droughtLevels.length)];
+            document.getElementById('drought-monitor').textContent = `Current Drought Level: ${randomLevel}`;
+        }
+
+        // Weather prediction system (replace with real API call)
+        function updateWeatherPrediction() {
+            const weatherConditions = ['Sunny', 'Partly Cloudy', 'Overcast', 'Light Rain', 'Heavy Rain'];
+            const randomCondition = weatherConditions[Math.floor(Math.random() * weatherConditions.length)];
+            const temperature = (Math.random() * (35 - 15) + 15).toFixed(1);
+            const humidity = (Math.random() * (90 - 30) + 30).toFixed(1);
+            
+            document.getElementById('weather-prediction').innerHTML = `
+                <p>Forecast: ${randomCondition}</p>
+                <p>Temperature: ${temperature}°C</p>
+                <p>Humidity: ${humidity}%</p>
+            `;
+        }
+
+        // Crop cultivation system
+        function analyzeCrop() {
+            const crop = document.getElementById('crop-select').value;
+            if (!crop) {
+                alert('Please select a crop');
+                return;
+            }
+
+            // In a real-world scenario, this would use actual data and more complex analysis
+            const ndvi = parseFloat(document.getElementById('ndvi').textContent);
+            const soilMoisture = parseFloat(document.getElementById('soil-moisture').textContent);
+            const temperature = parseFloat(tempChart.data.datasets[0].data[tempChart.data.datasets[0].data.length - 1]);
+
+            let analysis = `Analysis for ${crop}:<br>`;
+            analysis += `NDVI: ${ndvi} - `;
+            analysis += ndvi > 0.5 ? 'Good vegetation health<br>' : 'Poor vegetation health<br>';
+            analysis += `Soil Moisture: ${soilMoisture}% - `;
+            analysis += soilMoisture > 20 ? 'Adequate moisture<br>' : 'Insufficient moisture<br>';
+            analysis += `Temperature: ${temperature}°C - `;
+            analysis += (temperature > 20 && temperature < 30) ? 'Optimal temperature range<br>' : 'Suboptimal temperature<br>';
+
+            let suitability = 'Medium';
+            if (ndvi > 0.5 && soilMoisture > 20 && temperature > 20 && temperature < 30) {
+                suitability = 'High';
+            } else if (ndvi < 0.3 || soilMoisture < 10 || temperature < 10 || temperature > 35) {
+                suitability = 'Low';
+            }
+            analysis += `Overall suitability: ${suitability}`;
+
+            document.getElementById('crop-analysis').innerHTML = analysis;
+        }
+
+        // Update all data
+        function updateAllData() {
+            updateNDVI();
+            updateSoilMoisture();
+            updateCharts();
+            updateDroughtMonitor();
+            updateWeatherPrediction();
+        }
+
+        // Initial update
+        updateAllData();
+
+        // Update every 30 seconds
+        setInterval(updateAllData, 30000);
+    </script>
+</body>
+</html>
